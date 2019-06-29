@@ -60,7 +60,6 @@ function DuckButtonClickEvents (self, Event, ...)
             DuckButton:SetNormalTexture(237552)
         end
     end
-
 end
 DuckButton:SetScript("OnClick", DuckButtonClickEvents)
 
@@ -85,8 +84,8 @@ function DuckNameplateEvents (self, Event, ...)
                 local PlayerX, PlayerY = MapPositionToXY("player")
                 local HealthPercentage = UnitHealth(UnitId) / UnitHealthMax(UnitId) * 100
                 local Combat = UnitAffectingCombat(UnitId)
-                if PlayerX and PlayerY and Debugging then
-                    SendChatMessage("Duck Tools: ".. "Rare " .. UnitName(UnitId) .. " is up at: " .. "X: " .. floor(PlayerX * 100) .. ", Y: " .. floor(PlayerY * 100).." at "..floor(HealthPercentage).."%".. " and ".. Combat and "is in combat." or "is not in combat.", "CHANNEL", nil, 1)
+                if PlayerX and PlayerY then
+                    SendChatMessage("Duck Tools: ".. "Rare " .. UnitName(UnitId) .. " is up at: " .. "X: " .. floor(PlayerX * 100) .. ", Y: " .. floor(PlayerY * 100).." at "..floor(HealthPercentage).."%".. " and ".. CombatCheck(UnitId), "CHANNEL", nil, 1)
                     SeenRares[UnitGuid] = {Time = GetTime()}
                 end                   
             end
@@ -102,9 +101,28 @@ function DuckNameplateEvents (self, Event, ...)
     end
 end
 
+function CombatCheck(Unit)
+    local Combat = UnitAffectingCombat(Unit)
+    return Combat and "Is in Combat " or "Is not in Combat"
+end
+
 DuckNameplateFrame:SetScript("OnEvent", DuckNameplateEvents)
 
+-- Duck Combat Frame
 
+local DuckCombatFrame = CreateFrame("Frame", nil, UIParent)
+DuckCombatFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+
+function DuckCombatEvents (self, Event, ...)
+    local TimeStamp, Type, _, SourceGuid, SourceName, _, _, DestGuid, DestName, _, _, SpellId, SpellName, _, SpellType = CombatLogGetCurrentEventInfo()
+    if Type == "UNIT_DIED" then
+        if SeenRares[DestGuid] then
+            SeenRares[DestGuid] = nil
+            SendChatMessage("Duck Tools: ".. "Rare " .. DestName .. " has died.", "WHISPER", nil, "Eastersunday")
+        end
+    end
+end
+DuckCombatFrame:SetScript("OnEvent", DuckCombatEvents)
 -- Chat Parse Frame
 local DuckChatFrame = CreateFrame("Frame", nil, UIParent)
 DuckChatFrame:RegisterEvent("CHAT_MSG_GUILD")
