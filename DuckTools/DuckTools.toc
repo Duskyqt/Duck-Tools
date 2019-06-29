@@ -1,0 +1,7 @@
+## Interface: 70300
+## Title: Duck Tools
+## Author: RealDuckyTv / TheQt
+## Version: 0.1
+## SavedVariablesPerCharacter: MyAddonPerSettings
+
+DuckTools.lua
