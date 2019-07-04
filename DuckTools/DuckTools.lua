@@ -1,4 +1,28 @@
 
+-- Functions 
+
+local function HealthPercentage(Unit)
+    return UnitHealth(Unit) / UnitHealthMax(Unit) * 100 or 0
+end
+
+local function CombatCheck(Unit)
+    local Combat = UnitAffectingCombat(Unit)
+    return Combat and "Is in Combat." or "Is not in Combat."
+end
+
+
+local function MapPositionToXY(arg)
+	local mapID = C_Map.GetBestMapForUnit(arg)
+	
+	if mapID and arg then
+		local mapPos = C_Map.GetPlayerMapPosition(mapID, arg)
+		if mapPos then
+			return mapPos:GetXY()
+		end
+	end
+	
+	return 0, 0
+end
 
 
 
@@ -35,18 +59,7 @@ DuckButton:RegisterEvent("PLAYER_LOGIN")
 DuckButton:SetScript("OnEvent", DuckButtonEvents)
 
 -- From MapCoords addon
-local function MapPositionToXY(arg)
-	local mapID = C_Map.GetBestMapForUnit(arg)
-	
-	if mapID and arg then
-		local mapPos = C_Map.GetPlayerMapPosition(mapID, arg)
-		if mapPos then
-			return mapPos:GetXY()
-		end
-	end
-	
-	return 0, 0
-end
+
 function DuckButtonClickEvents (self, Event, ...)
     if Debugging then
         print("Duck Button Events: ", Event)
@@ -62,14 +75,13 @@ function DuckButtonClickEvents (self, Event, ...)
     end
 end
 DuckButton:SetScript("OnClick", DuckButtonClickEvents)
-
 -- Duck Nameplate Frame
 local ClassificationTable = {
     ["rare"] = true, 
     ["rareelite"] = true,
 }
 local SeenRares = {}
-
+local LastRare = nil
 local DuckNameplateFrame = CreateFrame("Frame", nil, UIParent)
 DuckNameplateFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 function DuckNameplateEvents (self, Event, ...)
@@ -82,29 +94,27 @@ function DuckNameplateEvents (self, Event, ...)
         if (not SeenRares[UnitGuid] or SeenRares[UnitGuid].Time + 90 < GetTime()) and UnitExists(UnitId) and not UnitIsDeadOrGhost(UnitId) and UnitId then
             if ClassificationTable[UnitClassification(UnitId)] then
                 local PlayerX, PlayerY = MapPositionToXY("player")
-                local HealthPercentage = UnitHealth(UnitId) / UnitHealthMax(UnitId) * 100
                 local Combat = UnitAffectingCombat(UnitId)
                 if PlayerX and PlayerY then
-                    SendChatMessage("Duck Tools: ".. "Rare " .. UnitName(UnitId) .. " is up at: " .. "X: " .. floor(PlayerX * 100) .. ", Y: " .. floor(PlayerY * 100).." at "..floor(HealthPercentage).."%".. " and ".. CombatCheck(UnitId), "CHANNEL", nil, 1)
-                    SeenRares[UnitGuid] = {Time = GetTime()}
+                    SendChatMessage("Duck Tools: ".. "Rare " .. UnitName(UnitId) .. " is up at: " .. "X: " .. floor(PlayerX * 100) .. ", Y: " .. floor(PlayerY * 100).." at "..floor(HealthPercentage(UnitId)).."%".. " and ".. CombatCheck(UnitId).." Get an update on the Rare's HP by typing #update.", "CHANNEL", nil, 1)
+                    SeenRares[UnitGuid] = {Time = GetTime(), Identifier = UnitId}
+                    LastRare = SeenRares[UnitGuid]
                 end                   
             end
         end
         for Guid, Table in pairs(SeenRares) do
-            for Property, Value in pairs(Table) do
-                if Value + 90 < GetTime() then
+            if UnitIsDeadOrGhost(Table.Identifier) then 
+                if Table.Time + 90 < GetTime() then
                     print("Clearing: ", Guid)
                     SeenRares[Guid] = nil
+                    LastRare = nil
                 end
             end
         end
     end
 end
 
-function CombatCheck(Unit)
-    local Combat = UnitAffectingCombat(Unit)
-    return Combat and "Is in Combat " or "Is not in Combat"
-end
+
 
 DuckNameplateFrame:SetScript("OnEvent", DuckNameplateEvents)
 
@@ -118,24 +128,45 @@ function DuckCombatEvents (self, Event, ...)
     if Type == "UNIT_DIED" then
         if SeenRares[DestGuid] then
             SeenRares[DestGuid] = nil
-            SendChatMessage("Duck Tools: ".. "Rare " .. DestName .. " has died.", "WHISPER", nil, "Eastersunday")
+            LastRare = nil
+            SendChatMessage("Duck Tools: ".. "Rare " .. DestName .. " has died.", "CHANNEL", nil, 1)
         end
     end
 end
 DuckCombatFrame:SetScript("OnEvent", DuckCombatEvents)
 -- Chat Parse Frame
 local DuckChatFrame = CreateFrame("Frame", nil, UIParent)
+DuckChatFrame:RegisterEvent("CHAT_MSG_CHANNEL")
 DuckChatFrame:RegisterEvent("CHAT_MSG_GUILD")
 DuckChatFrame:RegisterEvent("CHAT_MSG_GUILD_ACHIEVEMENT")
-DuckChatFrame:RegisterEvent("CHAT_MSG_CHANNEL")
 DuckChatFrame:RegisterEvent("CHAT_MSG_ADDON")
-
+DuckChatFrame:RegisterEvent("CHAT_MSG_WHISPER")
+local LastMessage = 0
 function DuckChatEvents (self, Event, ...) 
     if Debugging and Event ~= "CHAT_MSG_ADDON" then
         print("Duck Chat Events: ", Event)
     end
-    
-   
+    local TestMessage = ...
+    if LastRare and not UnitIsDeadOrGhost(LastRare.Identifier) and (LastMessage < GetTime() or Event == "CHAT_MSG_WHISPER")then
+        if Debugging then
+            if Event == "CHAT_MSG_WHISPER" then
+                local Message, Author, _ = ...
+                print("Checking the whisper, ", strfind(Message, "#update"))
+                if strfind(Message, "#update") then
+                    SendChatMessage("Duck Tools: ".."Rare: "..UnitName(LastRare.Identifier).." is at "..floor(HealthPercentage(LastRare.Identifier)).."%", "WHISPER", nil, Author)
+                end
+            elseif Event == "CHAT_MSG_CHANNEL" then
+                local Message, Author, _, Channel = ...
+                if Channel == 1 and strfind(Message, "#update") then
+                    SendChatMessage("Duck Tools: ".."Rare: "..UnitName(LastRare.Identifier).." is at "..floor(HealthPercentage(LastRare.Identifier)).."%", "CHANNEL", nil, 1)
+                    LastMessage = GetTime() + 30
+                end
+            end
+        end
+    end
+    _G.DuckRares = { SeenRares, LastRare, LastMessage }
 end
 DuckChatFrame:SetScript("OnEvent", DuckChatEvents)
+
+-- Functions
 
