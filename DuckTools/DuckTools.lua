@@ -42,7 +42,7 @@ local function AddonMessage (Text, Channel, Target)
     local Success = C_ChatInfo.IsAddonMessagePrefixRegistered("DTA")
     if Text and Channel and Target and Success then
         if Debugging then
-            print("Sending Addon Information")
+            print("Sending Addon Information", Text)
         end
         C_ChatInfo.SendAddonMessage("DTA", Text, Channel, Target)
     end
@@ -52,12 +52,11 @@ end
 -- Button Settings
 local settings
 local DuckButton = CreateFrame("BUTTON", nil, UIParent, "SecureHandlerClickTemplate");
-DuckButton:SetSize(25,25)
+DuckButton:SetSize(50, 50)
 DuckButton:SetPoint("CENTER",0,0)
 DuckButton:RegisterForClicks("AnyDown")
-DuckButton:SetNormalTexture(319458)
-DuckButton:SetPushedTexture(319458)
-DuckButton:SetHighlightTexture(319458)
+DuckButton:SetNormalTexture("Interface\\AddOns\\DuckTools\\Media\\duck")
+DuckButton:SetPushedTexture("Interface\\AddOns\\DuckTools\\Media\\duckinator")
 DuckButton:SetMovable(true)
 DuckButton:EnableMouse(true)
 DuckButton:RegisterForDrag("LeftButton")
@@ -92,15 +91,20 @@ function DuckButtonClickEvents (self, Event, ...)
         if Debugging then
             Debugging = false
             print("Debugging Disabled")
-            DuckButton:SetNormalTexture(319458)
+            DuckButton:SetNormalTexture("Interface\\AddOns\\DuckTools\\Media\\duck")
         elseif not Debugging then
             Debugging = true
             print("Debugging Enabled")
-            DuckButton:SetNormalTexture(237552)
+            DuckButton:SetNormalTexture("Interface\\AddOns\\DuckTools\\Media\\duckinator")
         end
     end
     if Event == "LeftButton" then
-        print("This button hasn't been completed yet :)")
+        if Debugging and UnitExists("Target") then
+            print("Sending Addon Information")
+            AddonMessage("DuckTools".."//".."Rare".."//"..UnitGUID("Target"), CHANNEL, 1)
+        else
+            print("This button hasn't been completed yet :)")
+        end
     end
 end
 DuckButton:SetScript("OnClick", DuckButtonClickEvents)
@@ -120,11 +124,11 @@ function DuckNameplateEvents (self, Event, ...)
     if Event == "NAME_PLATE_UNIT_ADDED" then
         local UnitId = ...
         local UnitGuid = UnitGUID(UnitId)
-        if (not SeenRares[UnitGuid] or SeenRares[UnitGuid].Time < GetTime()) and UnitExists(UnitId) and not UnitIsDeadOrGhost(UnitId) and UnitId then
+        if (not SeenRares[UnitGuid] or SeenRares[UnitGuid].Time < GetTime()) and UnitId and UnitExists(UnitId) and not UnitIsDeadOrGhost(UnitId) then
             if ClassificationTable[UnitClassification(UnitId)] then
                 local PlayerX, PlayerY = MapPositionToXY("player")
                 local Combat = UnitAffectingCombat(UnitId)
-                if PlayerX and PlayerY then
+                if PlayerX and PlayerY and HealthPercentage(UnitId) > 20 then
                     SendChatMessage("Duck Tools: ".. "Rare " .. UnitName(UnitId) .. " is up at: " .. "X: " .. floor(PlayerX * 100) .. ", Y: " .. floor(PlayerY * 100).." at "..floor(HealthPercentage(UnitId)).."%".. " and ".. CombatCheck(UnitId).." Get an update on the Rare's HP by typing #update.", "CHANNEL", nil, 1)
                     AddonMessage("Duck Tools".."//".."Rare".."//"..UnitGuid, "CHANNEL", 1)
                     SeenRares[UnitGuid] = {Time = GetTime() + 300, Identifier = UnitId, Name = UnitName(UnitId)}
