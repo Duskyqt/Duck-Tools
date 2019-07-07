@@ -155,7 +155,7 @@ end
 
 DuckNameplateFrame:SetScript("OnEvent", DuckNameplateEvents)
 
--- Duck Combat Frame
+-- Duck Combat Frame 
 
 local DuckCombatFrame = CreateFrame("Frame", nil, UIParent)
 DuckCombatFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
