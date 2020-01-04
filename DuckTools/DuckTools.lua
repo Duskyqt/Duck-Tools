@@ -185,21 +185,19 @@ function DuckChatEvents (self, Event, ...)
     end
     
     if LastRare and not UnitIsDeadOrGhost(LastRare.Identifier) and (LastMessage < GetTime() or Event == "CHAT_MSG_WHISPER")then
-        if Debugging then
-            if Event == "CHAT_MSG_WHISPER" then
-                local Message, Author, _ = ...
-                if Debugging then
-                    print("Checking the whisper, ", strfind(Message, "#update"))
-                end
-                if strfind(Message, "#update") then
-                    SendChatMessage("Duck Tools: ".."Rare: "..UnitName(LastRare.Identifier).." is at "..floor(HealthPercentage(LastRare.Identifier)).."%", "WHISPER", nil, Author)
-                end
-            elseif Event == "CHAT_MSG_CHANNEL" then
-                local Message, Author, _, Channel = ...
-                if Channel == 1 and strfind(Message, "#update") then
-                    SendChatMessage("Duck Tools: ".."Rare: "..UnitName(LastRare.Identifier).." is at "..floor(HealthPercentage(LastRare.Identifier)).."%", "CHANNEL", nil, 1)
-                    LastMessage = GetTime() + 30
-                end
+        if Event == "CHAT_MSG_WHISPER" then
+            local Message, Author, _ = ...
+            if Debugging then
+                print("Checking the whisper, ", strfind(Message, "#update"))
+            end
+            if strfind(Message, "#update") then
+                SendChatMessage("Duck Tools: ".."Rare: "..UnitName(LastRare.Identifier).." is at "..floor(HealthPercentage(LastRare.Identifier)).."%", "WHISPER", nil, Author)
+            end
+        elseif Event == "CHAT_MSG_CHANNEL" then
+            local Message, Author, _, Channel = ...
+            if Channel == 1 and strfind(Message, "#update") then
+                SendChatMessage("Duck Tools: ".."Rare: "..UnitName(LastRare.Identifier).." is at "..floor(HealthPercentage(LastRare.Identifier)).."%", "CHANNEL", nil, 1)
+                LastMessage = GetTime() + 30
             end
         end
     end
